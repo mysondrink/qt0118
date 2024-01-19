@@ -1,6 +1,6 @@
 # reagent-test-program csv data modified-program 
 # csv数据修改
-荧光分析仪软件CSV数据修改程序
+荧光分析仪软件excel数据修改程序
 
 [![Contributors][contributors-shield]][contributors-url]
 [![Forks][forks-shield]][forks-url]
@@ -9,8 +9,8 @@
 
 <template>
     <div>
-        <h1 align="center">CSV数据修改</h1>
-        <h2 align="center">对荧光分析仪qt0922数据导出的csv文件进行修改</h2>
+        <h1 align="center">excel数据修改</h1>
+        <h2 align="center">对荧光分析仪qt0922数据导出的excel文件进行修改</h2>
     </div>
 </template>
 
