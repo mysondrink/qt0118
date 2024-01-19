@@ -4,24 +4,48 @@
 @Time：2024/1/18 11:45
 """
 # -- coding: utf-8 --
-from PySide2.QtCore import Qt, QSize, QDir
-from PySide2.QtWidgets import QWidget, QPushButton, QVBoxLayout, QTableView, QHBoxLayout, QFileDialog
-from PySide2.QtGui import QStandardItemModel, QStandardItem
+from PySide2.QtCore import Qt, QSize, QDir, Signal
+from PySide2.QtWidgets import QWidget, QPushButton, QVBoxLayout, QTableView, \
+    QHBoxLayout, QFileDialog, QHeaderView, QAbstractItemView, QMessageBox, \
+    QMainWindow
+from PySide2.QtGui import QStandardItemModel, QStandardItem, QCloseEvent
 import numpy as np
 import pandas as pd
+from dialog import DataDialog
+from writefile import WriteNewFile
+
+SUCCEED_CODE = 202
+FAILED_CODE = 404
 
 
-class MyMainWin(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
+class MyMainWin(QMainWindow):
+    update_json = Signal(dict)
+    def __init__(self):
+        super().__init__()
+        self.flag_dump = 0
+        self.csv_data = []
         self.InitUI()
+
+    def closeEvent(self, event) -> None:
+        if self.flag_dump == 1:
+            reply = QMessageBox.question(self, '退出', '未保存，确定退出？', QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel, QMessageBox.Cancel)
+            if reply == QMessageBox.Yes:
+                self.writeNewFile()
+            else:
+                event.ignore()
+                return
+        self.close()
 
     def InitUI(self):
         self.setObjectName("MainWin")
         w_size = QSize(800, 600)
         self.setMinimumSize(w_size)
+        self.resize(1024, 720)
         layout = QVBoxLayout()
         self.setLayout(layout)
+        frame = QWidget()
+        frame.setLayout(layout)
+        self.setCentralWidget(frame)
         btnOpen = QPushButton()
         btnOpen.setObjectName("btnOpen")
         btnOpen.setText("打开文件")
@@ -29,6 +53,12 @@ class MyMainWin(QWidget):
         layout.addWidget(btnOpen)
         self.tableView = QTableView()
         self.tableView.setObjectName("tableView")
+        self.tableView.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        # self.tableView.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tableView.setEditTriggers(QAbstractItemView.NoEditTriggers)  # 设置表格不可编辑
+        self.tableView.setSelectionBehavior(QAbstractItemView.SelectRows)  # 设置整行选中
+        self.tableView.doubleClicked.connect(self.showDataDialog)
+        self.tableView.verticalHeader().setDefaultSectionSize(100)
         layout.addWidget(self.tableView)
         #
         layout_1 = QHBoxLayout()
@@ -39,29 +69,68 @@ class MyMainWin(QWidget):
         btnDump = QPushButton()
         btnDump.setObjectName("btnDump")
         btnDump.setText("保存")
+        btnDump.clicked.connect(self.writeNewFile)
         layout_1.addWidget(btnModify)
         layout_1.addWidget(btnDump)
         btnModify.hide()
 
     def fileOpen(self):
-        path, _ = QFileDialog.getOpenFileNames(self, "open csv", QDir.currentPath(), "Data_*.csv")
+        path, _ = QFileDialog.getOpenFileNames(self, "open excel", QDir.currentPath(), "*.xlsx")
+        # import chardet
+        # with open(path[0], 'rb') as f:
+        #     result = chardet.detect(f.read())
         if not path:
             return
-        input_table = pd.read_csv(path[0], encoding='utf-8-sig')
+        # input_table = pd.read_csv(path[0])
+        input_table = pd.read_excel(path[0], sheet_name="Sheet2")
         input_table_rows = input_table.shape[0]
         input_table_columns = input_table.shape[1]
         input_table_header = input_table.columns.values.tolist()
         model = QStandardItemModel(input_table_rows, input_table_columns)
+
+        self.csv_data = []
 
         for i in range(len(input_table_header)):
             model.setHeaderData(i, Qt.Horizontal, input_table_header[i])
 
         for j in range(input_table_rows):
             input_table_rows_values = input_table.iloc[[j]]
-            input_table_rows_values_array = np.arrary(input_table_rows_values)
+            input_table_rows_values_array = np.array(input_table_rows_values)
             input_table_rows_values_list = input_table_rows_values_array.tolist()[0]
+            self.csv_data.append(input_table_rows_values_list)
             for k in range(input_table_columns):
                 input_table_items_list = input_table_rows_values_list[k]
                 item = QStandardItem(str(input_table_items_list))
-                item.setTextAlignment(j, k, item)
+                item.setTextAlignment(Qt.AlignCenter)
+                model.setItem(j, k, item)
         self.tableView.setModel(model)
+
+    def showDataDialog(self):
+        row = self.tableView.currentIndex().row()
+        self.dialog = DataDialog()
+        self.update_json.connect(self.dialog.getData)
+        self.dialog.update_json.connect(self.getData)
+        self.dialog.close_dialog.connect(self.show)
+        self.update_json.emit(self.csv_data[row])
+        self.hide()
+        self.dialog.show()
+
+    def getData(self, msg):
+        row = msg['row']
+        data = msg['data']
+        code = msg['code']
+        self.csv_data[row] = data
+        self.flag_dump = 1 if code == SUCCEED_CODE else 0
+        self.csv_data[row - 1] = data
+
+    def writeNewFile(self):
+        if not self.csv_data:
+            return
+        if self.flag_dump == 0:
+            return
+        self.flag_dump = 0
+        print("writeNewFile!")
+        thread = WriteNewFile(self.csv_data)
+        thread.finished.connect(lambda: thread.deleteLater())
+        thread.finished.connect(lambda: QMessageBox.information(self, "提示", "完成文件修改", QMessageBox.Yes))
+        thread.start()
