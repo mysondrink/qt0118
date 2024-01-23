@@ -82,27 +82,36 @@ class MyMainWin(QMainWindow):
         if not path:
             return
         # input_table = pd.read_csv(path[0])
-        input_table = pd.read_excel(path[0], sheet_name="Sheet2")
+        try:
+            self.file_path = path[0]
+            input_table = pd.read_excel(path[0], sheet_name="Sheet2")
+        except Exception as e:
+            print(e)
+            return
         input_table_rows = input_table.shape[0]
         input_table_columns = input_table.shape[1]
         input_table_header = input_table.columns.values.tolist()
-        model = QStandardItemModel(input_table_rows, input_table_columns)
+        model = QStandardItemModel(0, input_table_columns)
 
         self.csv_data = []
+        self.new_data = []
 
         for i in range(len(input_table_header)):
             model.setHeaderData(i, Qt.Horizontal, input_table_header[i])
 
+        num = 0
         for j in range(input_table_rows):
             input_table_rows_values = input_table.iloc[[j]]
             input_table_rows_values_array = np.array(input_table_rows_values)
             input_table_rows_values_list = input_table_rows_values_array.tolist()[0]
             self.csv_data.append(input_table_rows_values_list)
-            for k in range(input_table_columns):
-                input_table_items_list = input_table_rows_values_list[k]
-                item = QStandardItem(str(input_table_items_list))
-                item.setTextAlignment(Qt.AlignCenter)
-                model.setItem(j, k, item)
+            if input_table_rows_values_list[-1] == 0:
+                for k in range(input_table_columns):
+                    input_table_items_list = input_table_rows_values_list[k]
+                    item = QStandardItem(str(input_table_items_list))
+                    item.setTextAlignment(Qt.AlignCenter)
+                    model.setItem(num, k, item)
+                num = num + 1
         self.tableView.setModel(model)
 
     def showDataDialog(self):
@@ -119,9 +128,10 @@ class MyMainWin(QMainWindow):
         row = msg['row']
         data = msg['data']
         code = msg['code']
+        data[-1] = 1
         self.csv_data[row] = data
+        self.new_data.append(data)
         self.flag_dump = 1 if code == SUCCEED_CODE else 0
-        self.csv_data[row - 1] = data
 
     def writeNewFile(self):
         if not self.csv_data:
@@ -130,7 +140,7 @@ class MyMainWin(QMainWindow):
             return
         self.flag_dump = 0
         print("writeNewFile!")
-        thread = WriteNewFile(self.csv_data)
+        thread = WriteNewFile(self.csv_data, self.new_data, self.file_path)
         thread.finished.connect(lambda: thread.deleteLater())
         thread.finished.connect(lambda: QMessageBox.information(self, "提示", "完成文件修改", QMessageBox.Yes))
         thread.start()

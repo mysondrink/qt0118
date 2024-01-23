@@ -68,11 +68,11 @@ class DataDialog(QWidget):
 
     def getData(self, msg):
         self.reagent_info = msg
-        for i in range(len(msg) - 1):
+        for i in range(len(msg) - 2):
             item = QLabel()
             item.setText(str(msg[i]))
             self.gridlayout.addWidget(item, i, 1)
-        self.setTableView(msg[-1])
+        self.setTableView(msg[-2])
 
     def setTableView(self, data):
         model = QStandardItemModel(0, 5)
@@ -96,11 +96,11 @@ class DataDialog(QWidget):
             self.btnDump.setEnabled(False)
 
     def on_btnDump_clicked(self):
-        row = self.reagent_info[0]
+        row = self.reagent_info[0] - 1
         code = FAILED_CODE
-        test = (self.readTableView() == self.reagent_info[-1])
+        # test = (self.readTableView() == self.reagent_info[-1])
         if self.flag_dump == 1:
-            self.reagent_info[-1] = self.readTableView()
+            self.reagent_info[-2] = self.readTableView()
             code = SUCCEED_CODE
         self.update_json.emit(dict(row=row, data=self.reagent_info, code=code))
         self.flag_dump = 0
