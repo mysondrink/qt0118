@@ -3,7 +3,7 @@
 @Author：mysondrink@163.com
 @Time：2024/1/19 9:24
 """
-from PySide2.QtCore import QThread, Signal
+from PySide2.QtCore import QThread, Signal, QFileInfo
 import pandas as pd
 import os
 
@@ -16,7 +16,13 @@ class WriteNewFile(QThread):
         self.save_path = save_path
 
     def run(self) -> None:
-        save_path = './new_data.xlsx'
+        # QFileInfo
+        # fileInfo(filePath);
+        # QString
+        # parentPath = fileInfo.dir().path(); // 获取上一级路径
+        fileInfo = QFileInfo(self.save_path)
+        parentPath = fileInfo.dir().path()
+        save_path = parentPath + '/new_data.xlsx'
         dataone = pd.DataFrame(self.csv_data)
         new_data = pd.DataFrame(self.new_data)
         head = ["序号", "图片名称", "时间", "样本条码", "医生", "类别",

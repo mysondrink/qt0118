@@ -4,7 +4,7 @@
 @Time：2024/1/18 11:45
 """
 # -- coding: utf-8 --
-from PySide2.QtCore import Qt, QSize, QDir, Signal
+from PySide2.QtCore import Qt, QSize, QDir, Signal, QFileInfo
 from PySide2.QtWidgets import QWidget, QPushButton, QVBoxLayout, QTableView, \
     QHBoxLayout, QFileDialog, QHeaderView, QAbstractItemView, QMessageBox, \
     QMainWindow
@@ -37,6 +37,7 @@ class MyMainWin(QMainWindow):
         self.close()
 
     def InitUI(self):
+        self.setWindowTitle("荧光分析仪数据修改软件")
         self.setObjectName("MainWin")
         w_size = QSize(800, 600)
         self.setMinimumSize(w_size)
